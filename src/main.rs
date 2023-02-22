@@ -26,12 +26,26 @@ use ddns_monitor::{initialize_state, monitor_state, send_initial_notification};
 use std::env;
 
 fn main() {
+    // first give the machine time to finish booting, in case we run at startup
+    let start_wait: u64 = env::var("DDNS_START_DELAY_SECONDS")
+        .unwrap_or_else(|_| String::from("300"))
+        .parse()
+        .unwrap_or(300);
+    if start_wait > 0 {
+        println!(
+            "{}: DDNS Monitor starting (delay {start_wait} seconds)...",
+            Local::now().to_rfc2822()
+        );
+        std::thread::sleep(std::time::Duration::from_secs(start_wait));
+    }
+    // initialize the state
+    // TODO: compare with prior saved state
+    let mut state = initialize_state().expect("Initialization error");
+    send_initial_notification(&state, false).expect("Initial notification error");
     let interval: u64 = env::var("DDNS_INTERVAL_SECONDS")
         .unwrap_or_else(|_| String::from("3600"))
         .parse()
         .unwrap_or(3600);
-    let mut state = initialize_state().expect("Initialization error");
-    send_initial_notification(&state, false).expect("Initial notification error");
     loop {
         match monitor_state(&mut state) {
             Ok(_) => {
