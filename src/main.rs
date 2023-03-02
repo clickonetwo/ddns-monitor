@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 use chrono::Local;
-use ddns_monitor::{initialize_state, monitor_state, send_initial_notification};
+use ddns_monitor::{initialize_state, monitor_state, send_error_notification};
 use std::env;
 
 fn main() {
@@ -38,23 +38,19 @@ fn main() {
         );
         std::thread::sleep(std::time::Duration::from_secs(start_wait));
     }
-    // initialize the state
-    // TODO: compare with prior saved state
-    let mut state = initialize_state().expect("Initialization error");
-    send_initial_notification(&state, false).expect("Initial notification error");
     let interval: u64 = env::var("DDNS_INTERVAL_SECONDS")
         .unwrap_or_else(|_| String::from("3600"))
         .parse()
         .unwrap_or(3600);
+    let mut state = initialize_state().expect("Initialization error");
+    std::thread::sleep(std::time::Duration::from_secs(interval));
     loop {
-        match monitor_state(&mut state) {
-            Ok(_) => {
-                std::thread::sleep(std::time::Duration::from_secs(interval));
-            }
-            Err(err) => {
-                println!("{}: Monitor failure: {err}", Local::now().to_rfc2822());
-                std::thread::sleep(std::time::Duration::from_secs(interval));
-                send_initial_notification(&state, true).expect("Restart notification error");
+        std::thread::sleep(std::time::Duration::from_secs(interval));
+        if let Err(err) = monitor_state(&mut state) {
+            let timestamp = Local::now().to_rfc2822();
+            println!("{timestamp}: Monitor failure: {err}");
+            if let Err(err) = send_error_notification(err) {
+                println!("{timestamp}: Couldn't send error notification: {err}")
             }
         }
     }
