@@ -30,7 +30,9 @@ pub type State = HashMap<String, String>;
 #[serde(rename_all = camelCase)]
 pub struct Configuration {
     state: State,
-    #[]
+    to_address: Vec<String>,
+    from_address: String,
+    from_password: String,
 }
 
 fn config_path<T: AsRef<str>>(name: Option<T>) -> Result<std::path::PathBuf> {
