@@ -21,29 +21,36 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
-use std::env;
-
 use chrono::Local;
-use eyre::{eyre, Report, Result, WrapErr};
+use eyre::{Report, Result, WrapErr};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
+use crate::Configuration;
+
 use super::{current_ip, State};
 
-pub fn send_initial_notification(state: &State) -> Result<()> {
-    let mut body = vec![format!(
-        "Dynamic DNS monitoring is in effect for the following hosts:",
-    )];
-    for (host, addr) in state {
-        body.push(format!("-- Host: {host}, Current address: {addr}"))
+pub fn send_initial_notification(config: &Configuration) -> Result<()> {
+    let subject = format!("Dynamic DNS monitoring status has started");
+    let mut body = vec![];
+    body.push(format!(
+        "Dynamic DNS monitoring is in effect for the following hosts:"
+    ));
+    for (host, addr) in config.state.iter() {
+        body.push(format!("-- Host: {host}, Initial address: {addr}"))
     }
     body.push(String::from(
         "You will be notified if any of these addresses change.",
     ));
-    send_notification(subject, body)
+    send_notification(config, subject, body)
 }
 
-pub fn send_change_notification(name: &str, old_address: &str, new_address: &str) -> Result<()> {
+pub fn send_change_notification(
+    config: &Configuration,
+    name: &str,
+    old_address: &str,
+    new_address: &str,
+) -> Result<()> {
     let subject = format!("DNS change for {name}");
     let body = vec![
         format!("The IP address of {name} has changed."),
@@ -51,65 +58,68 @@ pub fn send_change_notification(name: &str, old_address: &str, new_address: &str
         format!("-- The new address is: {new_address}."),
         String::from("You must reconfigure the VPN tunnel."),
     ];
-    send_notification(subject, body)
+    send_notification(config, subject, body)
 }
 
-pub fn send_error_notification(err: Report) -> Result<()> {
+pub fn send_error_notification(config: &Configuration, err: Report) -> Result<()> {
     let subject = format!("DNS monitoring temporary failure");
     let body = vec![
         format!("DNS monitoring reported an error: {err}"),
         format!("A retry will be performed on the normal schedule."),
     ];
-    send_notification(subject, body)
+    send_notification(config, subject, body)
 }
 
-pub fn send_notification(subject: String, body: Vec<String>) -> Result<()> {
-    let from_address = env::var("DDNS_FROM_ADDRESS")
-        .wrap_err("No DDNS_FROM_ADDRESS value found in environment")?;
-    let from_password = env::var("DDNS_FROM_PASSWORD")
-        .wrap_err("No DDNS_FROM_PASSWORD value found in environment")?;
-    let to_address =
-        env::var("DDNS_TO_ADDRESS").wrap_err("No DDNS_TO_ADDRESS value found in environment")?;
-    let email = Message::builder()
-        .from(from_address.parse().unwrap())
-        .to(to_address.parse().unwrap())
-        .subject(subject)
+pub fn send_notification(config: &Configuration, subject: String, body: Vec<String>) -> Result<()> {
+    let mut builder = Message::builder();
+    let from = config.from_address.as_str();
+    builder = builder.from(
+        from.parse()
+            .wrap_err(format!("Illegal from address: {from}"))?,
+    );
+    for to in config.to_addresses.iter() {
+        builder = builder.to(to.parse().wrap_err(format!("Illegal to address: {to}"))?)
+    }
+    builder = builder.subject(subject);
+    let email = builder
         .body(body.join("\n"))
         .wrap_err("E-mail message creation failed.")?;
-    let creds = Credentials::new(from_address, from_password);
-    let mailer = SmtpTransport::relay("smtp.gmail.com")
-        .expect("Couldn't lookup smtp.gmail.com")
+    let password = config.password()?;
+    let creds = Credentials::new(from.to_string(), password.to_string());
+    let server = config.from_server.as_str();
+    let mailer = SmtpTransport::relay(server)
+        .wrap_err(format!("Couldn't lookup {server}"))?
         .credentials(creds)
         .build();
     let _response = mailer.send(&email).wrap_err("E-mail send failed")?;
     Ok(())
 }
 
-pub fn initialize_state() -> Result<State> {
+pub fn initialize_state(config: &Configuration) -> Result<()> {
     println!("Initializing state monitoring...");
-    let mut state = super::load_state()?;
-    monitor_state(&mut state)?;
-    for (host, ip) in state.iter() {
+    for (host, ip) in config.state.iter() {
         let timestamp = Local::now().to_rfc2822();
-        println!("{timestamp}: Initial address for {host} is {ip}",);
+        println!("{timestamp}: The remembered address for {host} is {ip}",);
     }
-    send_initial_notification(&state)?;
-    Ok(state)
+    send_initial_notification(config)
 }
 
-pub fn monitor_state(state: &mut State) -> Result<u32> {
+pub fn monitor_state(config: &mut Configuration) -> Result<u32> {
     let mut change_count = 0;
-    for (name, last_val) in state.iter_mut() {
-        let cur_val = current_ip(name)?;
-        if !cur_val.eq_ignore_ascii_case(last_val) {
+    let mut new_state = State::new();
+    for (name, old_address) in config.state.iter() {
+        let new_address = current_ip(name)?;
+        new_state.insert(name.to_string(), new_address.to_string());
+        if !new_address.eq_ignore_ascii_case(old_address) {
             change_count += 1;
-            println!(
-                "{}: New address for {name} is {cur_val}",
-                Local::now().to_rfc2822()
-            );
-            send_change_notification(name, last_val, &cur_val).wrap_err("Failed to send email")?;
+            let time = Local::now().to_rfc2822();
+            println!("{time}: New address for {name} is {new_address} (was {old_address})");
+            send_change_notification(config, name, old_address, &new_address)
+                .wrap_err("Failed to send email")?;
         }
-        *last_val = cur_val;
+    }
+    if change_count > 0 {
+        config.state = new_state;
     }
     Ok(change_count)
 }
@@ -118,14 +128,9 @@ pub fn monitor_state(state: &mut State) -> Result<u32> {
 mod tests {
     use std::env;
 
-    use eyre::Result;
+    use crate::Configuration;
 
-    use crate::State;
-
-    use super::{
-        current_ip, initialize_state, monitor_state, send_change_notification,
-        send_initial_notification,
-    };
+    use super::{current_ip, initialize_state, monitor_state, send_change_notification};
 
     #[test]
     fn test_lookup() {
@@ -140,39 +145,35 @@ mod tests {
 
     #[test]
     fn test_change_notification() {
-        let from_address =
-            env::var("DDNS_FROM_ADDRESS").expect("No DDNS_FROM_ADDRESS in environment");
-        let to_address = env::var("DDNS_TO_ADDRESS").expect("No DDNS_TO_ADDRESS in environment");
-        send_change_notification("Some host", "old address", "new address")
+        let config = Configuration::new_from_environment();
+        send_change_notification(&config, "Some host", "old", "new")
             .expect("Failed to send email notification of address change");
-        println!("Notification sent from {from_address} to {to_address}");
     }
 
-    fn initialize_state_for_tests() -> Result<State> {
+    fn get_test_config() -> Configuration {
         env::set_var("DDNS_HOST_1", "clickonetwo.io");
         env::set_var("DDNS_HOST_2", "localhost");
         env::set_var("DDNS_HOST_3", "");
-        initialize_state()
+        Configuration::new_from_environment()
     }
 
     #[test]
     fn test_initialize_state() {
-        let state = initialize_state_for_tests().expect("Couldn't initialize state for tests?");
-        assert_eq!(state.len(), 2);
-        send_initial_notification(&state).expect("Failed to send initial monitor notification");
-        send_initial_notification(&state).expect("Failed to send restart monitor notification");
+        let config = get_test_config();
+        assert_eq!(config.state.len(), 2);
+        initialize_state(&config).expect("Failed to initialize state");
     }
 
     #[test]
     fn test_monitor_state_initial() {
-        let mut state = initialize_state_for_tests().expect("Couldn't initialize state for tests?");
-        assert_eq!(monitor_state(&mut state).expect("Monitor state failed"), 0);
+        let mut config = get_test_config();
+        assert_eq!(monitor_state(&mut config).expect("Monitor state failed"), 0);
     }
 
     #[test]
     fn test_monitor_state_subsequent() {
-        let mut state = initialize_state_for_tests().expect("Couldn't initialize state for tests?");
-        *state.get_mut("localhost").unwrap() = "incorrect".to_string();
-        assert_eq!(monitor_state(&mut state).expect("Monitor state failed"), 1);
+        let mut config = get_test_config();
+        *config.state.get_mut("localhost").unwrap() = "incorrect".to_string();
+        assert_eq!(monitor_state(&mut config).expect("Monitor state failed"), 1);
     }
 }

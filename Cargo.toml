@@ -1,5 +1,8 @@
 [package]
 name = "ddns-monitor"
+authors = ["Daniel Brotsky <dan@clickonetwo.io>"]
+description = "A service to monitor changes in dynamic DNS addresses"
+license = "MIT"
 version = "0.2.0"
 edition = "2021"
 

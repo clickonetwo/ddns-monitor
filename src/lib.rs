@@ -23,11 +23,11 @@ SOFTWARE.
  */
 use eyre::{eyre, Result, WrapErr};
 
-mod configure;
-mod monitor;
-
 pub use configure::{Configuration, State};
 pub use monitor::{initialize_state, monitor_state, send_error_notification};
+
+mod configure;
+mod monitor;
 
 fn current_ip(host: &str) -> Result<String> {
     let ips = dns_lookup::lookup_host(host).wrap_err(format!("DNS lookup failed on {host}"))?;
