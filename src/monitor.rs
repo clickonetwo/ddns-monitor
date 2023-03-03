@@ -21,21 +21,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
+use std::env;
+
 use chrono::Local;
 use eyre::{eyre, Report, Result, WrapErr};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
-use std::env;
 
-use super::State;
-
-pub fn current_ip(host: &str) -> Result<String> {
-    let ips = dns_lookup::lookup_host(host).wrap_err(format!("DNS lookup failed on {host}"))?;
-    let ip = ips
-        .first()
-        .ok_or(eyre!("No DNS address entry for {}", host))?;
-    Ok(ip.to_string())
-}
+use super::{current_ip, State};
 
 pub fn send_initial_notification(state: &State) -> Result<()> {
     let mut body = vec![format!(
@@ -64,8 +57,8 @@ pub fn send_change_notification(name: &str, old_address: &str, new_address: &str
 pub fn send_error_notification(err: Report) -> Result<()> {
     let subject = format!("DNS monitoring temporary failure");
     let body = vec![
-        format!("DNS monitoring reported an error: {err}");
-        format!("A retry will be performed on the normal schedule.")
+        format!("DNS monitoring reported an error: {err}"),
+        format!("A retry will be performed on the normal schedule."),
     ];
     send_notification(subject, body)
 }
@@ -123,13 +116,16 @@ pub fn monitor_state(state: &mut State) -> Result<u32> {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
+    use eyre::Result;
+
+    use crate::State;
+
     use super::{
         current_ip, initialize_state, monitor_state, send_change_notification,
         send_initial_notification,
     };
-    use crate::State;
-    use eyre::Result;
-    use std::env;
 
     #[test]
     fn test_lookup() {

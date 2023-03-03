@@ -20,19 +20,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
- */
-use eyre::{eyre, Result, WrapErr};
-
-mod configure;
-mod monitor;
-
-pub use configure::{Configuration, State};
-pub use monitor::{initialize_state, monitor_state, send_error_notification};
-
-fn current_ip(host: &str) -> Result<String> {
-    let ips = dns_lookup::lookup_host(host).wrap_err(format!("DNS lookup failed on {host}"))?;
-    let ip = ips
-        .first()
-        .ok_or(eyre!("No DNS address entry for {}", host))?;
-    Ok(ip.to_string())
+*/
+fn main() {
+    // This never has to be recompiled
+    println!("cargo:rerun-if-changed=build.rs");
+    // Get the mac address of the build machine and give it to the compile
+    let fallback = mac_address::get_mac_address()
+        .expect("Couldn't get build machine MAC address")
+        .expect("Build machine has no MAC address");
+    println!("cargo:rustc-env=BUILD_MACHINE_MAC_ADDRESS={fallback}");
 }
