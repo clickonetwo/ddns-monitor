@@ -31,7 +31,7 @@ use crate::Configuration;
 use super::{current_ip, State};
 
 pub fn send_initial_notification(config: &Configuration) -> Result<()> {
-    let subject = format!("Dynamic DNS monitoring status has started");
+    let subject = format!("Dynamic DNS monitoring status");
     let mut body = vec![];
     body.push(format!(
         "Dynamic DNS monitoring is in effect for the following hosts:"
@@ -54,9 +54,9 @@ pub fn send_change_notification(
     let subject = format!("DNS change for {name}");
     let body = vec![
         format!("The IP address of {name} has changed."),
-        format!("-- The old address was: {old_address}."),
-        format!("-- The new address is: {new_address}."),
-        String::from("You must reconfigure the VPN tunnel."),
+        format!("-- The old IP address was: {old_address}."),
+        format!("-- The new IP address is: {new_address}."),
+        String::from("You must reconfigure any services that had the old IP address."),
     ];
     send_notification(config, subject, body)
 }
@@ -96,7 +96,8 @@ pub fn send_notification(config: &Configuration, subject: String, body: Vec<Stri
 }
 
 pub fn initialize_state(config: &Configuration) -> Result<()> {
-    println!("Initializing state monitoring...");
+    let timestamp = Local::now().to_rfc2822();
+    println!("{timestamp}: Initializing state monitoring...");
     for (host, ip) in config.state.iter() {
         let timestamp = Local::now().to_rfc2822();
         println!("{timestamp}: The remembered address for {host} is {ip}",);
