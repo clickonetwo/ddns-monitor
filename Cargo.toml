@@ -1,10 +1,23 @@
 [package]
 name = "ddns-monitor"
-version = "0.1.0"
+authors = ["Daniel Brotsky <dan@clickonetwo.io>"]
+description = "A service to monitor changes in dynamic DNS addresses"
+license = "MIT"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
+dialoguer = "0.10"
+directories = "4"
 dns-lookup = "1"
 eyre = "0.6"
 lettre = "0.10"
+mac_address = "1"
+magic-crypt = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+mac_address = "1"
