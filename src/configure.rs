@@ -296,7 +296,7 @@ impl Configuration {
 }
 
 fn config_path() -> Result<PathBuf> {
-    let project_dirs = directories::ProjectDirs::from("io", "clickonetwo", "ddns-monitor")
+    let project_dirs = directories::ProjectDirs::from("io", "ClickOneTwo", "ddns-monitor")
         .wrap_err("Can't find project directories for ddns-monitor.clickonetwo.io")?;
     let config_dir = project_dirs.config_dir();
     create_dir_all(config_dir).wrap_err("Can't create configuration directory")?;
