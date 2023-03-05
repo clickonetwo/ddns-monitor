@@ -16,15 +16,46 @@ You can only use `nssm` on Windows 10 or higher.  Because Windows services are t
 4. Unzip the release and put the `nssm.exe` program in the `C:\Program Files\nssm` directory.
 5. Download the Windows build from the [latest release of ddns-monitor](https://github.com/clickonetwo/ddns-monitor/releases/latest).
 6. Move it to the `C:\Program Files\nssm` directory and rename it `ddns-monitor.exe`.
-7. Double-click the `ddns-monitor.exe` file to launch it.  A terminal window will open and interview you to collect configuration information (see the [Configuration](#configuration) section).
-8. Download the [ddns-monitor-install.cmd](./ddns-monitor-install.cmd) file from the same directory as these instructions, and put it in the `C:\Program Files\nssm` directory.
-9. Edit the `ddns-monitor-install.cmd` file and:
-   * replace `<username>` with your Windows account name (4 occurrences);
+7. Open a terminal session by typing `cmd.exe` in the Start menu search box and hitting return.  In the terminal session give the command `ddns-monitor configure` and answer the configuration questions (see the [Configuration](#configuration) section).
+8. Download the [`ddns-monitor-install.cmd`](./ddns-monitor-install.cmd) file from the same directory as these instructions, and put it in the `C:\Program Files\nssm` directory.
+9. Edit the `ddns-monitor-install.cmd` file:
+   * Replace `<username>` with your Windows account name (4 occurrences);
    * Replace `<login password>` with your Windows login password (1 occurrence).
 10. Open a command prompt with elevated privileges, as follows: in the Start menu search box, type `cmd.exe` to find the Windows command prompt program, right click on it, and choose `Run as administrator`.
-11. In the command prompt window, give the command `ddns-monitor-install` (followed by the enter key).
+11. In the command prompt window, give the command `ddns-monitor-install` (followed by the enter key).  You will see commands starting with `nssm` being executed, and (hopefully) no error messages.
 
 At this point, the dynamic DNS monitor service is installed and will run the next time you reboot your computer.
+
+### Mac installation
+
+You can only use `ddns-monitor` on Mac OS 10.12 or newer.  These instructions are for running it as “Launch Daemon,” which means it runs regardless of who is logged in on the computer.
+
+1. In the Terminal, give the command `mkdir -p ~/Applications` to ensure you have a user-owned Applications directory.
+
+2. In your web browser, download the appropriate Mac build (`x86_64` for an Intel machine, `aarm64` for an Apple Silicon machine) from the [latest release of ddns-monitor](https://github.com/clickonetwo/ddns-monitor/releases/latest). 
+
+3. In the Terminal, give these two commands, the first of which moves the program from where it was downloaded to where it will be used, and the second of which makes it executable:
+
+   ```shell
+   mv ~/Downloads/ddns-monitor.* ~/Applications/ddns-monitor
+   chmod a+x ~/Applications
+   ```
+
+4. In the Terminal, run the monitor to configure it: `~/Applications/ddns-monitor` (see the [Configuration](#configuration) section).
+
+5. Download the [`io.ClickOneTwo.ddns-monitor.plist`](./io.ClickOneTwo.ddns-monitor.plist) file from the same directory as these instructions.
+
+6. Edit the downloaded copy of the `io.ClickOneTwo.ddns-monitor.plist` file:
+
+   - Replace `USERNAME` (all caps, 4 occurrences) with your Mac account name (which is the name of your home directory, not your full name).
+
+7. In the terminal, move your edited copy of the plist file into place with the command:
+
+   ```shell
+   sudo mv ~/Downloads/io.ClickOneTwo.ddns-monitor.plist /Library/LaunchDaemons/
+   ```
+
+At this point, the Dynamic DNS monitor service is installed and will run the next time you reboot your computer.
 
 ## Configuration
 
