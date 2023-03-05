@@ -1,0 +1,63 @@
+name: publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        arch: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin, x86_64-pc-windows-msvc]
+        include:
+          - arch: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            executable_name: ddns-monitor
+            posted_name: ddns-monitor.ubuntu_x86_64
+          - arch: x86_64-pc-windows-msvc
+            os: windows-latest
+            executable_name: ddns-monitor.exe
+            posted_name: ddns-monitor.windows_x86_64.exe
+          - arch: x86_64-apple-darwin
+            os: macos-latest
+            executable_name: ddns-monitor
+            posted_name: ddns-monitor.mac_x86_64
+          - arch: aarch64-apple-darwin
+            os: macos-latest
+            executable_name: ddns-monitor
+            posted_name: ddns-monitor.mac_arm64
+
+    steps:
+      - name: upgrade XCode
+        uses: maxim-lobanov/setup-xcode@v1
+        if: ${{ matrix.os == 'macos-latest' }}
+        with:
+          xcode-version: latest-stable
+
+      - name: XCode build target to aarch64-apple-darwin
+        run: |
+          echo SDKROOT=$(xcrun --show-sdk-path) >> $GITHUB_ENV
+          echo MACOSX_DEPLOYMENT_TARGET=$(xcrun --show-sdk-platform-version) >> $GITHUB_ENV
+        if: ${{ matrix.arch == 'aarch64-apple-darwin' }}
+
+      - name: fetch head
+        uses: actions/checkout@v3
+
+      - name: install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.arch }}
+
+      - name: Build release ddns-monitor (mac and win only)
+        run: cargo build --target ${{ matrix.arch }} --release --locked
+
+      - name: Post decoder executable
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.arch }}/release/${{ matrix.executable_name }}
+          asset_name: ${{ matrix.posted_name }}
+          tag: ${{ github.ref }}
