@@ -1,7 +1,7 @@
 nssm install ddns-monitor "C:\Program Files\ClickOneTwo\ddns-monitor.exe"
 nssm set ddns-monitor AppParameters monitor
 nssm set ddns-monitor AppDirectory C:\Users\<username>
-nssm set ddns-monitor AppExit Default Restart
+nssm set ddns-monitor AppExit Default Exit
 nssm set ddns-monitor AppNoConsole 1
 nssm set ddns-monitor AppStdout C:\Users\<username>\AppData\Local\ClickOneTwo\ddns-monitor\monitor.log
 nssm set ddns-monitor AppStderr C:\Users\<username>\AppData\Local\ClickOneTwo\ddns-monitor\monitor.err
