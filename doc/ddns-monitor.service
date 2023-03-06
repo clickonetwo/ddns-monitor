@@ -1,0 +1,20 @@
+[Unit]
+Description=Dynamic DNS Monitor
+Requires=network.target
+After=network.target
+StartLimitIntervalSec=6
+StartLimitBurst=3
+
+[Service]
+User=USERNAME
+Type=simple
+Restart=on-success
+RestartSec=1
+WorkingDirectory=/home/USERNAME/bin
+ExecStart=/home/USERNAME/bin/ddns-monitor monitor
+ExecStop=killall -SIGINT ddns-monitor
+StandardOutput=append:/home/USERNAME/.local/share/ddns-monitor/ddns-monitor.log
+StandardError=append:/home/USERNAME/.local/share/ddns-monitor/ddns-monitor.err
+
+[Install]
+WantedBy=multi-user.target

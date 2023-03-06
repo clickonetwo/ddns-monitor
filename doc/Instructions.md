@@ -41,7 +41,7 @@ You can only use `ddns-monitor` on Mac OS 10.12 or newer.  These instructions ar
    chmod a+x ~/Applications
    ```
 
-4. In the Terminal, run the monitor to configure it: `~/Applications/ddns-monitor` (see the [Configuration](#configuration) section).
+4. In the Terminal, run the monitor to configure it: `~/Applications/ddns-monitor configure` (see the [Configuration](#configuration) section).
 
 5. Download the [`io.ClickOneTwo.ddns-monitor.plist`](./io.ClickOneTwo.ddns-monitor.plist) file from the same directory as these instructions.
 
@@ -57,6 +57,38 @@ You can only use `ddns-monitor` on Mac OS 10.12 or newer.  These instructions ar
 
 At this point, the Dynamic DNS monitor service is installed and will run the next time you reboot your computer.
 
+### Linux installation
+
+You can probably use `ddns-monitor` on any Linux system, but the premade build is for Ubuntu so those are the instructions we give here.  On other architectures you may need to adjust them.
+
+1. In a terminal, give the command `mkdir -p ~/bin` to ensure you have a user-owned binaries directory.
+
+2. In your web browser, download the Ubuntu build from the [latest release of ddns-monitor](https://github.com/clickonetwo/ddns-monitor/releases/latest). 
+
+3. In a terminal, give these two commands, the first of which moves the program from where it was downloaded to where it will be used, and the second of which makes it executable:
+
+   ```shell
+   mv ~/Downloads/ddns-monitor.* ~/Applications/ddns-monitor
+   chmod a+x ~/bin
+   ```
+
+4. In a terminal, run the monitor to configure it: `~/bin/ddns-monitor configure` (see the [Configuration](#configuration) section).
+
+5. Download the [`ddns-monitor.service`](./ddns-monitor.service) file from the same directory as these instructions.
+
+6. Edit the downloaded copy of the `ddns-monitor.service` file:
+
+   - Replace `USERNAME` (all caps, 5 occurrences) with your Linux login name (which is the name of your home directory, not your full name).
+
+7. In the terminal, move your edited copy of the service file into place, and register the service with the system, using these two commands:
+
+   ```shell
+   sudo mv ~/Downloads/ddns-monitor.service /etc/systemd/system/
+   sudo sudo systemctl enable ddns-monitor
+   ```
+
+At this point, the Dynamic DNS monitor service is installed and will run the next time you reboot your computer.
+
 ## Configuration
 
 The configuration instructions for `ddns-monitor` are the same for all platforms.  You *must* configure it before running it as a monitoring service.  If it’s launched as a service without being configured, it will log an error message and then quit.
@@ -65,6 +97,6 @@ To configure `ddns-monitor`, launch it in a terminal session with an argument of
 
 1. The SMTP (email) server that you use to send mail, such as `smtp.gmail.com` for Google-hosted addresses.  This is the same server you use with your mail program.
 2. The `From` email address/server login account that you use to send emails.
-3. The password for your server account. This password is stored encrypted in the configuration, and the configuration is only readable by your account, so there’s no risk in entering the password.  (_N.B._ If you use Gmail, and you have disallowed “less secure access,” you will need to have created a Google `application password` for use by `ddns-monitor`.)
+3. The password for your server account. This password is stored encrypted in the configuration, and the configuration is only readable by your account, so there’s no risk in entering the password.  (_N.B._ If you use Google mail, and you have disallowed “less secure access,” you will need to have created a Google `application password` for use by `ddns-monitor`.)
 4. The `To` email addresses that you want notifications to be sent to.  This can include yourself.
 5. The hostnames (DNS names) that you want monitored to see if their IP address changes.

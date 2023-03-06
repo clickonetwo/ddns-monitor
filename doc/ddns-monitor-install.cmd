@@ -3,8 +3,8 @@ nssm set ddns-monitor AppParameters monitor
 nssm set ddns-monitor AppDirectory C:\Users\<username>
 nssm set ddns-monitor AppExit Default Restart
 nssm set ddns-monitor AppNoConsole 1
-nssm set ddns-monitor AppStdout C:\Users\<username>\AppData\Roaming\ClickOneTwo\ddns-monitor\monitor.log
-nssm set ddns-monitor AppStderr C:\Users\<username>\AppData\Roaming\ClickOneTwo\ddns-monitor\monitor.err
+nssm set ddns-monitor AppStdout C:\Users\<username>\AppData\Local\ClickOneTwo\ddns-monitor\monitor.log
+nssm set ddns-monitor AppStderr C:\Users\<username>\AppData\Local\ClickOneTwo\ddns-monitor\monitor.err
 nssm set ddns-monitor AppRotateFiles 1
 nssm set ddns-monitor AppRotateOnline 1
 nssm set ddns-monitor AppRotateBytes 100000000
