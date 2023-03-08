@@ -27,6 +27,8 @@ You can only use `nssm` on Windows 10 or higher.  Because Windows services are t
 
 At this point, the dynamic DNS monitor service is installed and will run the next time you reboot your computer.  If you want to start it running before you reboot, give the command `nssm start ddns-monitor` from a command prompt with elevated privileges.
 
+(_N.B._ If, when you try to run the `nssm` program, you get a message about a missing library, then you will need to download and run the installer for the [Visual Studio 2015 redistributable runtime](https://www.microsoft.com/en-us/download/details.aspx?id=48145).)
+
 ### Mac installation
 
 You can only use `ddns-monitor` on Mac OS 10.12 or newer.  These instructions are for running it as “Launch Daemon,” which means it runs regardless of who is logged in on the computer.
