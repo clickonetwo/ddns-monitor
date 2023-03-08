@@ -38,18 +38,29 @@ enum Command {
 
 fn main() -> Result<()> {
     let command: Command = Command::parse();
-    let mut config = Configuration::new_from_config_file().unwrap_or_default();
-    if matches!(command, Command::Monitor) && !config.state.is_empty() {
-        // run as server
-        monitor(&mut config)
-    } else {
-        config
-            .update_from_interview()
-            .wrap_err("Failed to update configuration")?;
-        config
-            .save_to_config_file()
-            .wrap_err("Failed to save configuration")?;
-        Ok(())
+    let result = Configuration::new_from_config_file();
+    match command {
+        Command::Monitor => match result {
+            Ok(mut config) => monitor(&mut config),
+            Err(err) => {
+                let timestamp = Local::now().to_rfc2822();
+                eprintln!("{timestamp}: Fatal error: can't load configuration: {err}");
+                std::process::exit(1);
+            }
+        },
+        Command::Configure => {
+            let mut config = match result {
+                Ok(config) => config,
+                Err(_) => Configuration::default(),
+            };
+            config
+                .update_from_interview()
+                .wrap_err("Failed to update configuration")?;
+            config
+                .save_to_config_file()
+                .wrap_err("Failed to save configuration")?;
+            Ok(())
+        }
     }
 }
 

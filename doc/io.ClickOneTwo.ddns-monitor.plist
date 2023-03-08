@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>GroupName</key>
+	<string>staff</string>
+	<key>InitGroups</key>
+	<true/>
+	<key>KeepAlive</key>
+	<dict>
+		<key>Crashed</key>
+		<true/>
+		<key>SuccessfulExit</key>
+		<true/>
+	</dict>
+	<key>Label</key>
+	<string>io.ClickOneTwo.ddns-monitor</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/USERNAME/Applications/ddns-monitor</string>
+		<string>monitor</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/USERNAME/Library/Logs/io.ClickOneTwo.ddns-monitor.err</string>
+	<key>StandardOutPath</key>
+	<string>/Users/USERNAME/Library/Logs/io.ClickOneTwo.ddns-monitor.log</string>
+	<key>UserName</key>
+	<string>USERNAME</string>
+</dict>
+</plist>

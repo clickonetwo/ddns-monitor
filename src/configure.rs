@@ -298,6 +298,10 @@ impl Configuration {
 fn config_path() -> Result<PathBuf> {
     let project_dirs = directories::ProjectDirs::from("io", "ClickOneTwo", "ddns-monitor")
         .wrap_err("Can't find project directories for ddns-monitor.clickonetwo.io")?;
+    // we create the local data dir to make sure there's a place for logs
+    let local_data_dir = project_dirs.data_local_dir();
+    create_dir_all(local_data_dir).wrap_err("Can't create local data directory")?;
+    // the config dir is where we store the configuration
     let config_dir = project_dirs.config_dir();
     create_dir_all(config_dir).wrap_err("Can't create configuration directory")?;
     let config_path = config_dir.join("config.json");
