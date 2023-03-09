@@ -213,8 +213,8 @@ impl Configuration {
             if name.is_empty() {
                 if !prompt.is_empty() {
                     eprintln!("{prompt} will not be notified.")
-                } else {
-                    // return on an empty line acts like dot alone.
+                } else if !new_emails.is_empty() {
+                    // return on an empty line when there are emails acts like dot alone.
                     break;
                 }
                 continue;
@@ -266,8 +266,8 @@ impl Configuration {
             if new_name.is_empty() {
                 if !old_name.is_empty() {
                     eprintln!("{old_name} will not be monitored.")
-                } else {
-                    // return on an empty line acts like dot alone.
+                } else if !new_state.is_empty() {
+                    // return on an empty line when there are hosts acts like dot alone.
                     break;
                 }
                 old_name = old_names.next().unwrap_or(&empty_name);
