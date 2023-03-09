@@ -213,6 +213,9 @@ impl Configuration {
             if name.is_empty() {
                 if !prompt.is_empty() {
                     eprintln!("{prompt} will not be notified.")
+                } else {
+                    // return on an empty line acts like dot alone.
+                    continue;
                 }
                 continue;
             } else if name.eq(".") {
@@ -263,6 +266,9 @@ impl Configuration {
             if new_name.is_empty() {
                 if !old_name.is_empty() {
                     eprintln!("{old_name} will not be monitored.")
+                } else {
+                    // return on an empty line acts like dot alone.
+                    continue;
                 }
                 old_name = old_names.next().unwrap_or(&empty_name);
             } else if new_name.eq(".") {
