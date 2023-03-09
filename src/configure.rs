@@ -215,7 +215,7 @@ impl Configuration {
                     eprintln!("{prompt} will not be notified.")
                 } else {
                     // return on an empty line acts like dot alone.
-                    continue;
+                    break;
                 }
                 continue;
             } else if name.eq(".") {
@@ -268,7 +268,7 @@ impl Configuration {
                     eprintln!("{old_name} will not be monitored.")
                 } else {
                     // return on an empty line acts like dot alone.
-                    continue;
+                    break;
                 }
                 old_name = old_names.next().unwrap_or(&empty_name);
             } else if new_name.eq(".") {
