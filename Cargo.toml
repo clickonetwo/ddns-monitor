@@ -3,17 +3,19 @@ name = "ddns-monitor"
 authors = ["Daniel Brotsky <dan@clickonetwo.io>"]
 description = "A service to monitor changes in dynamic DNS addresses"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
 chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
 dialoguer = "0.10"
-directories = "4"
-dns-lookup = "1"
+directories = "5"
+dns-lookup = "2"
 eyre = "0.6"
+gethostname = "0.4"
 lettre = "0.10"
+local-ip-address = "0.5"
 mac_address = "1"
 magic-crypt = "3"
 serde = { version = "1", features = ["derive"] }

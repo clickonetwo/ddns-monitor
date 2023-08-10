@@ -27,7 +27,7 @@ use chrono::Local;
 use clap::Parser;
 use eyre::{Result, WrapErr};
 
-use ddns_monitor::{initialize_state, monitor_state, send_error_notification, Configuration};
+use ddns_monitor::{initialize_state, monitor_loop, Configuration};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -82,30 +82,5 @@ fn monitor(config: &mut Configuration) -> Result<()> {
         .unwrap_or_else(|_| String::from("3600"))
         .parse()
         .unwrap_or(3600);
-    loop {
-        match monitor_state(config) {
-            Ok(0) => {
-                let timestamp = Local::now().to_rfc2822();
-                println!("{timestamp}: Monitor found no changes")
-            }
-            Ok(1) => {
-                let timestamp = Local::now().to_rfc2822();
-                println!("{timestamp}: Monitor found 1 change");
-                config.save_to_config_file()?;
-            }
-            Ok(count) => {
-                let timestamp = Local::now().to_rfc2822();
-                println!("{timestamp}: Monitor found {count} changes");
-                config.save_to_config_file()?;
-            }
-            Err(err) => {
-                let timestamp = Local::now().to_rfc2822();
-                println!("{timestamp}: Monitor failure: {err}");
-                if let Err(err) = send_error_notification(config, err) {
-                    println!("{timestamp}: Couldn't send error notification: {err}")
-                }
-            }
-        }
-        std::thread::sleep(std::time::Duration::from_secs(interval));
-    }
+    monitor_loop(config, interval);
 }

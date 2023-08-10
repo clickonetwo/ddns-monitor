@@ -45,6 +45,8 @@ pub struct Configuration {
     pub from_address: String,
     encrypted_password: String,
     pub to_addresses: Vec<String>,
+    #[serde(default)] // allow older configs missing this value
+    pub last_lookup: i64,
     pub state: State,
 }
 
@@ -57,7 +59,12 @@ impl Configuration {
     }
 
     #[cfg(test)]
-    pub fn new_from_environment() -> Self {
+    pub fn new_from_environment(is_first_time: bool) -> Self {
+        let last_lookup = if is_first_time {
+            0
+        } else {
+            chrono::Local::now().timestamp_millis()
+        };
         let from_address = env::var("DDNS_FROM_ADDRESS").expect("from address");
         let from_password = env::var("DDNS_FROM_PASSWORD").expect("from password");
         let to_address = env::var("DDNS_TO_ADDRESS").expect("to address");
@@ -83,6 +90,7 @@ impl Configuration {
             from_address,
             encrypted_password: encrypt_password(&from_password).expect("encryption"),
             to_addresses,
+            last_lookup,
             state,
         }
     }
@@ -116,6 +124,7 @@ impl Configuration {
         self.interview_from()?;
         self.interview_to_addresses()?;
         self.interview_state()?;
+        self.last_lookup = 0;
         Ok(())
     }
 
@@ -353,7 +362,7 @@ mod tests {
     fn test_save_and_load_config() {
         let config_path = config_path().expect("no config path").display().to_string();
         println!("Config path is {config_path}");
-        let env_config = Configuration::new_from_environment();
+        let env_config = Configuration::new_from_environment(true);
         env_config
             .save_to_config_file()
             .expect("Couldn't save config file");

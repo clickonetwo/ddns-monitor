@@ -33,11 +33,15 @@ use super::{current_ip, State};
 pub fn send_initial_notification(config: &Configuration) -> Result<()> {
     let subject = format!("Dynamic DNS monitoring status");
     let mut body = vec![];
+    let hostname = gethostname::gethostname().to_string_lossy().to_string();
+    let first = config.last_lookup <= 0;
+    let action = if first { "starting" } else { "restarting" };
     body.push(format!(
-        "Dynamic DNS monitoring is in effect for the following hosts:"
+        "Dynamic DNS monitoring from {hostname} is {action} for the following hosts:"
     ));
+    let address_type = if first { "Initial" } else { "Last known" };
     for (host, addr) in config.state.iter() {
-        body.push(format!("-- Host: {host}, Initial address: {addr}"))
+        body.push(format!("-- Host: {host}, {address_type} address: {addr}"))
     }
     body.push(String::from(
         "You will be notified if any of these addresses change.",
@@ -105,7 +109,7 @@ pub fn initialize_state(config: &Configuration) -> Result<()> {
     send_initial_notification(config)
 }
 
-pub fn monitor_state(config: &mut Configuration) -> Result<u32> {
+pub fn monitor_once(config: &mut Configuration) -> Result<u32> {
     let mut change_count = 0;
     let mut new_state = State::new();
     for (name, old_address) in config.state.iter() {
@@ -119,10 +123,26 @@ pub fn monitor_state(config: &mut Configuration) -> Result<u32> {
                 .wrap_err("Failed to send email")?;
         }
     }
-    if change_count > 0 {
-        config.state = new_state;
+    if change_count == 0 {
+        let time = Local::now().to_rfc2822();
+        println!("{time}: No address changes");
     }
+    config.last_lookup = Local::now().timestamp_millis();
+    config.state = new_state;
     Ok(change_count)
+}
+
+pub fn monitor_loop(config: &mut Configuration, interval_secs: u64) -> ! {
+    loop {
+        if let Err(err) = monitor_once(config) {
+            let timestamp = Local::now().to_rfc2822();
+            println!("{timestamp}: Monitor failure: {err}");
+            if let Err(err) = send_error_notification(config, err) {
+                println!("{timestamp}: Couldn't send error notification: {err}")
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_secs(interval_secs));
+    }
 }
 
 #[cfg(test)]
@@ -131,7 +151,7 @@ mod tests {
 
     use crate::Configuration;
 
-    use super::{current_ip, initialize_state, monitor_state, send_change_notification};
+    use super::{current_ip, initialize_state, monitor_once, send_change_notification};
 
     #[test]
     fn test_lookup() {
@@ -146,35 +166,36 @@ mod tests {
 
     #[test]
     fn test_change_notification() {
-        let config = Configuration::new_from_environment();
+        let config = Configuration::new_from_environment(false);
         send_change_notification(&config, "Some host", "old", "new")
             .expect("Failed to send email notification of address change");
     }
 
-    fn get_test_config() -> Configuration {
+    fn get_test_config(is_first_time: bool) -> Configuration {
         env::set_var("DDNS_HOST_1", "clickonetwo.io");
         env::set_var("DDNS_HOST_2", "localhost");
         env::set_var("DDNS_HOST_3", "");
-        Configuration::new_from_environment()
+        Configuration::new_from_environment(is_first_time)
     }
 
     #[test]
     fn test_initialize_state() {
-        let config = get_test_config();
+        let config = get_test_config(true);
         assert_eq!(config.state.len(), 2);
+        let config = get_test_config(false);
         initialize_state(&config).expect("Failed to initialize state");
     }
 
     #[test]
     fn test_monitor_state_initial() {
-        let mut config = get_test_config();
-        assert_eq!(monitor_state(&mut config).expect("Monitor state failed"), 0);
+        let mut config = get_test_config(true);
+        assert_eq!(monitor_once(&mut config).expect("Monitor state failed"), 0);
     }
 
     #[test]
     fn test_monitor_state_subsequent() {
-        let mut config = get_test_config();
+        let mut config = get_test_config(false);
         *config.state.get_mut("localhost").unwrap() = "incorrect".to_string();
-        assert_eq!(monitor_state(&mut config).expect("Monitor state failed"), 1);
+        assert_eq!(monitor_once(&mut config).expect("Monitor state failed"), 1);
     }
 }

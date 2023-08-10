@@ -24,7 +24,7 @@ SOFTWARE.
 use eyre::{eyre, Result, WrapErr};
 
 pub use configure::{Configuration, State};
-pub use monitor::{initialize_state, monitor_state, send_error_notification};
+pub use monitor::{initialize_state, monitor_loop, monitor_once};
 
 mod configure;
 mod monitor;
