@@ -36,3 +36,6 @@ fn current_ip(host: &str) -> Result<String> {
         .ok_or(eyre!("No DNS address entry for {}", host))?;
     Ok(ip.to_string())
 }
+
+#[cfg(test)]
+pub use configure::get_test_config;

@@ -46,8 +46,10 @@ pub struct Configuration {
     encrypted_password: String,
     pub to_addresses: Vec<String>,
     #[serde(default)] // allow older configs missing this value
-    pub last_lookup: i64,
+    pub last_update: i64,
     pub state: State,
+    #[serde(skip, default = "serde_aux::field_attributes::bool_true")]
+    pub is_file_based: bool,
 }
 
 impl Configuration {
@@ -90,8 +92,9 @@ impl Configuration {
             from_address,
             encrypted_password: encrypt_password(&from_password).expect("encryption"),
             to_addresses,
-            last_lookup,
+            last_update: last_lookup,
             state,
+            is_file_based: false,
         }
     }
 
@@ -124,7 +127,7 @@ impl Configuration {
         self.interview_from()?;
         self.interview_to_addresses()?;
         self.interview_state()?;
-        self.last_lookup = 0;
+        self.last_update = 0;
         Ok(())
     }
 
@@ -347,6 +350,19 @@ fn decrypt_password(base64: &str) -> Result<String> {
     Ok(pw)
 }
 
+/// Return a config for use in testing.
+/// This includes exactly two known hosts, and is an initial (interview) config
+/// if and only if `is_first_time` is false.
+///
+/// You must preconfigure the test environment with the required email addresses and password.
+#[cfg(test)]
+pub fn get_test_config(is_first_time: bool) -> Configuration {
+    env::set_var("DDNS_HOST_1", "clickonetwo.io");
+    env::set_var("DDNS_HOST_2", "localhost");
+    env::set_var("DDNS_HOST_3", "");
+    Configuration::new_from_environment(is_first_time)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,17 +375,32 @@ mod tests {
     }
 
     #[test]
-    fn test_save_and_load_config() {
+    fn test_save_and_load_and_update_and_reload_config() {
         let config_path = config_path().expect("no config path").display().to_string();
         println!("Config path is {config_path}");
-        let env_config = Configuration::new_from_environment(true);
-        env_config
+        let mut test_config = get_test_config(true);
+        test_config
+            .save_to_config_file()
+            .expect("Couldn't save config file");
+        let file_config = Configuration::new_from_config_file().expect("can't read config");
+        assert_ne!(
+            test_config, file_config,
+            "Load of saved config file matches in-memory config"
+        );
+        test_config.is_file_based = true;
+        assert_eq!(
+            test_config, file_config,
+            "Load of config file doesn't match saved config"
+        );
+        // modify an existing address
+        *test_config.state.get_mut("localhost").unwrap() = "192.168.23.35".to_string();
+        test_config
             .save_to_config_file()
             .expect("Couldn't save config file");
         let file_config = Configuration::new_from_config_file().expect("can't read config");
         assert_eq!(
-            env_config, file_config,
-            "Load of config file doesn't match saved config"
+            test_config, file_config,
+            "Load of config file doesn't match modified config"
         );
     }
 }
