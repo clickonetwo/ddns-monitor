@@ -34,7 +34,7 @@ pub fn send_initial_notification(config: &Configuration) -> Result<()> {
     let subject = format!("Dynamic DNS monitoring status");
     let mut body = vec![];
     let hostname = gethostname::gethostname().to_string_lossy().to_string();
-    let first = config.last_lookup <= 0;
+    let first = config.last_update <= 0;
     let action = if first { "starting" } else { "restarting" };
     body.push(format!(
         "Dynamic DNS monitoring from {hostname} is {action} for the following hosts:"
@@ -110,6 +110,7 @@ pub fn initialize_state(config: &Configuration) -> Result<()> {
 }
 
 pub fn monitor_once(config: &mut Configuration) -> Result<u32> {
+    let is_first_monitor = config.last_update <= 0;
     let mut change_count = 0;
     let mut new_state = State::new();
     for (name, old_address) in config.state.iter() {
@@ -123,12 +124,19 @@ pub fn monitor_once(config: &mut Configuration) -> Result<u32> {
                 .wrap_err("Failed to send email")?;
         }
     }
-    if change_count == 0 {
+    config.last_update = Local::now().timestamp_millis();
+    config.state = new_state;
+    if is_first_monitor || change_count > 0 {
+        if config.is_file_based {
+            config.save_to_config_file()?;
+        } else {
+            let time = Local::now().to_rfc2822();
+            println!("{time}: Config is not file-based, so can't save {change_count} changes")
+        }
+    } else {
         let time = Local::now().to_rfc2822();
         println!("{time}: No address changes");
     }
-    config.last_lookup = Local::now().timestamp_millis();
-    config.state = new_state;
     Ok(change_count)
 }
 
@@ -147,9 +155,7 @@ pub fn monitor_loop(config: &mut Configuration, interval_secs: u64) -> ! {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-
-    use crate::Configuration;
+    use crate::{get_test_config, Configuration};
 
     use super::{current_ip, initialize_state, monitor_once, send_change_notification};
 
@@ -171,31 +177,32 @@ mod tests {
             .expect("Failed to send email notification of address change");
     }
 
-    fn get_test_config(is_first_time: bool) -> Configuration {
-        env::set_var("DDNS_HOST_1", "clickonetwo.io");
-        env::set_var("DDNS_HOST_2", "localhost");
-        env::set_var("DDNS_HOST_3", "");
-        Configuration::new_from_environment(is_first_time)
-    }
-
     #[test]
     fn test_initialize_state() {
         let config = get_test_config(true);
         assert_eq!(config.state.len(), 2);
+        assert_eq!(config.last_update, 0);
+        initialize_state(&config).expect("Failed to initialize state first time");
         let config = get_test_config(false);
-        initialize_state(&config).expect("Failed to initialize state");
+        assert_ne!(config.last_update, 0);
+        initialize_state(&config).expect("Failed to initialize state second time");
     }
 
     #[test]
     fn test_monitor_state_initial() {
         let mut config = get_test_config(true);
+        assert_eq!(config.last_update, 0);
         assert_eq!(monitor_once(&mut config).expect("Monitor state failed"), 0);
+        assert_ne!(config.last_update, 0);
     }
 
     #[test]
     fn test_monitor_state_subsequent() {
         let mut config = get_test_config(false);
+        assert_ne!(config.last_update, 0);
+        let last_update = config.last_update;
         *config.state.get_mut("localhost").unwrap() = "incorrect".to_string();
         assert_eq!(monitor_once(&mut config).expect("Monitor state failed"), 1);
+        assert_ne!(config.last_update, last_update);
     }
 }
