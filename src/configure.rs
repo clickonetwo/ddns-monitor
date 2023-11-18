@@ -326,7 +326,7 @@ fn config_path() -> Result<PathBuf> {
     Ok(config_path)
 }
 
-const FALLBACK_MAC_ADDRESS: &'static str = env!("BUILD_MACHINE_MAC_ADDRESS");
+const FALLBACK_MAC_ADDRESS: &str = env!("BUILD_MACHINE_MAC_ADDRESS");
 
 fn encrypt_password(pw: &str) -> Result<String> {
     let key = match mac_address::get_mac_address() {

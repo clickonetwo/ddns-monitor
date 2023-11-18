@@ -31,7 +31,7 @@ use crate::Configuration;
 use super::{current_ip, State};
 
 pub fn send_initial_notification(config: &Configuration) -> Result<()> {
-    let subject = format!("Dynamic DNS monitoring status");
+    let subject = "Dynamic DNS monitoring status".to_string();
     let mut body = vec![];
     let hostname = gethostname::gethostname().to_string_lossy().to_string();
     let first = config.last_update <= 0;
@@ -71,7 +71,7 @@ pub fn send_change_notification(
 }
 
 pub fn send_error_notification(config: &Configuration, err: Report) -> Result<()> {
-    let subject = format!("DNS monitoring temporary failure");
+    let subject = "DNS monitoring temporary failure".to_string();
     let body = vec![
         format!("DNS monitoring reported an error: {err}"),
         format!("A retry will be performed on the normal schedule."),
