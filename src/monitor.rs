@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
-use chrono::Local;
+use chrono::{Local, LocalResult, TimeZone};
 use eyre::{Report, Result, WrapErr};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
@@ -42,6 +42,11 @@ pub fn send_initial_notification(config: &Configuration) -> Result<()> {
     let address_type = if first { "Initial" } else { "Last known" };
     for (host, addr) in config.state.iter() {
         body.push(format!("-- Host: {host}, {address_type} address: {addr}"))
+    }
+    if !first {
+        if let LocalResult::Single(last_check) = Local.timestamp_millis_opt(config.last_update) {
+            body.push(format!("Last check was at {}", last_check.to_rfc2822()))
+        }
     }
     body.push(String::from(
         "You will be notified if any of these addresses change.",
@@ -110,7 +115,6 @@ pub fn initialize_state(config: &Configuration) -> Result<()> {
 }
 
 pub fn monitor_once(config: &mut Configuration) -> Result<u32> {
-    let is_first_monitor = config.last_update <= 0;
     let mut change_count = 0;
     let mut new_state = State::new();
     for (name, old_address) in config.state.iter() {
@@ -124,18 +128,17 @@ pub fn monitor_once(config: &mut Configuration) -> Result<u32> {
                 .wrap_err("Failed to send email")?;
         }
     }
-    config.last_update = Local::now().timestamp_millis();
-    config.state = new_state;
-    if is_first_monitor || change_count > 0 {
-        if config.is_file_based {
-            config.save_to_config_file()?;
-        } else {
-            let time = Local::now().to_rfc2822();
-            println!("{time}: Config is not file-based, so can't save {change_count} changes")
-        }
-    } else {
+    if change_count == 0 {
         let time = Local::now().to_rfc2822();
         println!("{time}: No address changes");
+    }
+    config.last_update = Local::now().timestamp_millis();
+    config.state = new_state;
+    if config.is_file_based {
+        config.save_to_config_file()?;
+    } else {
+        let time = Local::now().to_rfc2822();
+        println!("{time}: Config is not file-based, so can't save {change_count} changes")
     }
     Ok(change_count)
 }
